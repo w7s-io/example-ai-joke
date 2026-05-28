@@ -1,0 +1,32 @@
+{
+  "name": "example-ai-joke",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run clean && npm run build:backend && npm run build:frontend",
+    "build:backend": "esbuild backend/src/index.ts --bundle --format=esm --platform=browser --target=es2022 --minify --outfile=backend/index.js",
+    "build:frontend": "vite build",
+    "check": "npm run typecheck && npm run build",
+    "clean": "rm -rf backend/index.js frontend/dist",
+    "dev": "vite --host 0.0.0.0",
+    "smoke:backend": "npm run build:backend && node scripts/smoke-backend.mjs",
+    "typecheck": "tsc --noEmit -p backend/tsconfig.json && tsc --noEmit -p frontend/tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "hono": "^4.12.22",
+    "lucide-react": "^1.16.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260527.1",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14"
+  }
+}

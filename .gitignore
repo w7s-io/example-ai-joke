@@ -1,0 +1,5 @@
+node_modules/
+backend/index.js
+frontend/dist/
+.DS_Store
+*.log
