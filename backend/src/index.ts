@@ -46,7 +46,7 @@ type JokeResult =
       };
     };
 
-const DEFAULT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+const DEFAULT_MODEL = "@w7s/meta/llama-3.1-8b-instruct-fp8";
 const W7S_AI_RUN_URL = "https://w7s.internal/api/v1/ai/run";
 const JOKE_TOPICS = [
   "deploy previews",
