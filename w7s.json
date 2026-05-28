@@ -1,4 +1,5 @@
 {
-  "vars": ["CLOUDFLARE_AI_MODEL"],
-  "secrets": ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN"]
+  "bindings": {
+    "ai": ["W7S_AI"]
+  }
 }

@@ -78,8 +78,8 @@ function App() {
         </div>
         <h1>Generate a tiny deployment joke.</h1>
         <p className="lede">
-          A Vite frontend calls a Hono backend. The backend keeps the Cloudflare
-          token secret and asks Workers AI for one short joke.
+          A Vite frontend calls a Hono backend. The backend uses W7S AI, a
+          platform-provided service binding, to ask Workers AI for one short joke.
         </p>
         <div className="facts" aria-label="Example stack">
           <div>
@@ -92,7 +92,7 @@ function App() {
           </div>
           <div>
             <span>AI</span>
-            <strong>Workers AI REST API</strong>
+            <strong>W7S AI binding</strong>
           </div>
         </div>
       </section>

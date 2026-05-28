@@ -1,25 +1,53 @@
 import { Hono } from "hono";
 
 type Bindings = {
-  CLOUDFLARE_ACCOUNT_ID?: string;
-  CLOUDFLARE_API_TOKEN?: string;
-  CLOUDFLARE_AI_MODEL?: string;
+  W7S_AI?: Fetcher;
+  W7S_AI_TOKEN?: string;
+  W7S_AI_CALLER?: string;
+  W7S_AI_ENVIRONMENT?: string;
 };
 
 type JokeRequest = {
   topic?: string;
 };
 
-type WorkersAiResponse = {
-  result?: {
-    response?: string;
-    text?: string;
+type W7SAiResponse = {
+  status?: string;
+  data?: {
+    model?: string;
+    result?: {
+      response?: string;
+      text?: string;
+    };
   };
-  success?: boolean;
-  errors?: Array<{ message?: string }>;
+  error?: string;
+  details?: unknown;
 };
 
-const DEFAULT_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+type JokeResult =
+  | {
+      ok: true;
+      status: number;
+      body: {
+        joke: string;
+        topic: string;
+        model: string;
+        source: string;
+        generatedAt: string;
+      };
+    }
+  | {
+      ok: false;
+      status: number;
+      body: {
+        error: string;
+        detail?: string;
+        setup?: string[];
+      };
+    };
+
+const DEFAULT_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+const W7S_AI_RUN_URL = "https://w7s.internal/api/v1/ai/run";
 const JOKE_TOPICS = [
   "deploy previews",
   "edge functions",
@@ -80,28 +108,19 @@ const parseJokeRequest = async (request: Request): Promise<JokeRequest> => {
   }
 };
 
-const workersAiUrl = (accountId: string, model: string) =>
-  `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${model}`;
+const generateJoke = async (env: Bindings, topic: string): Promise<JokeResult> => {
+  const token = env.W7S_AI_TOKEN?.trim();
+  const caller = env.W7S_AI_CALLER?.trim();
+  const environment = env.W7S_AI_ENVIRONMENT?.trim();
 
-const extractWorkersAiError = (payload: WorkersAiResponse | null, fallback: string) => {
-  const message = payload?.errors?.map((error) => error.message).filter(Boolean).join("; ");
-  return message || fallback;
-};
-
-const generateJoke = async (env: Bindings, topic: string) => {
-  const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim();
-  const apiToken = env.CLOUDFLARE_API_TOKEN?.trim();
-  const model = env.CLOUDFLARE_AI_MODEL?.trim() || DEFAULT_MODEL;
-
-  if (!accountId || !apiToken) {
+  if (!env.W7S_AI || !token || !caller || !environment) {
     return {
       ok: false as const,
       status: 503,
       body: {
-        error: "Cloudflare Workers AI is not configured.",
+        error: "W7S AI is not configured for this deployment.",
         setup: [
-          "Set CLOUDFLARE_ACCOUNT_ID as a GitHub secret.",
-          "Set CLOUDFLARE_API_TOKEN as a GitHub secret with Workers AI permissions.",
+          "Declare bindings.ai in w7s.json.",
           "Redeploy with the W7S GitHub Action."
         ]
       }
@@ -109,50 +128,55 @@ const generateJoke = async (env: Bindings, topic: string) => {
   }
 
   let response: Response;
-  let payload: WorkersAiResponse | null = null;
+  let payload: W7SAiResponse | null = null;
 
   try {
-    response = await fetch(workersAiUrl(accountId, model), {
+    response = await env.W7S_AI.fetch(W7S_AI_RUN_URL, {
       method: "POST",
       headers: {
-        authorization: `Bearer ${apiToken}`,
-        "content-type": "application/json"
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "x-w7s-ai-caller": caller,
+        "x-w7s-ai-environment": environment
       },
       body: JSON.stringify({
-        prompt: promptFor(topic)
+        model: DEFAULT_MODEL,
+        input: {
+          prompt: promptFor(topic)
+        }
       })
     });
-    payload = await response.json<WorkersAiResponse>();
+    payload = (await response.json()) as W7SAiResponse;
   } catch (error) {
     return {
       ok: false as const,
       status: 502,
       body: {
-        error: "Workers AI request failed.",
+        error: "W7S AI request failed.",
         detail: error instanceof Error ? error.message : String(error)
       }
     };
   }
 
-  if (!response.ok || payload?.success === false) {
+  if (!response.ok || payload?.status === "error") {
     return {
       ok: false as const,
       status: response.status || 502,
       body: {
-        error: "Workers AI returned an error.",
-        detail: extractWorkersAiError(payload, `HTTP ${response.status}`)
+        error: "W7S AI returned an error.",
+        detail: payload?.error ?? `HTTP ${response.status}`
       }
     };
   }
 
-  const joke = cleanJoke(payload?.result?.response ?? payload?.result?.text ?? "");
+  const joke = cleanJoke(payload?.data?.result?.response ?? payload?.data?.result?.text ?? "");
 
   if (!joke) {
     return {
       ok: false as const,
       status: 502,
       body: {
-        error: "Workers AI did not return a joke."
+        error: "W7S AI did not return a joke."
       }
     };
   }
@@ -163,8 +187,8 @@ const generateJoke = async (env: Bindings, topic: string) => {
     body: {
       joke,
       topic,
-      model,
-      source: "cloudflare-workers-ai",
+      model: payload?.data?.model ?? DEFAULT_MODEL,
+      source: "w7s-ai",
       generatedAt: new Date().toISOString()
     }
   };
@@ -175,10 +199,8 @@ app.get("/api/status", (c) =>
     {
       service: "example-ai-joke",
       status: "healthy",
-      aiConfigured: Boolean(
-        c.env.CLOUDFLARE_ACCOUNT_ID?.trim() && c.env.CLOUDFLARE_API_TOKEN?.trim()
-      ),
-      model: c.env.CLOUDFLARE_AI_MODEL?.trim() || DEFAULT_MODEL
+      aiConfigured: Boolean(c.env.W7S_AI && c.env.W7S_AI_TOKEN?.trim()),
+      model: DEFAULT_MODEL
     },
     200,
     jsonHeaders

@@ -1,7 +1,7 @@
 # example-ai-joke
 
 Small W7S fullstack example that uses a React frontend, a bundled Hono backend,
-and Cloudflare Workers AI to generate one random joke at a time.
+and the W7S-provided AI service binding to generate one random joke at a time.
 
 ## What It Deploys
 
@@ -9,8 +9,7 @@ and Cloudflare Workers AI to generate one random joke at a time.
 - `backend/index.js`: generated Worker backend bundle deployed by W7S.
 - `frontend/src`: React frontend source.
 - `frontend/dist`: generated static frontend served by W7S.
-- `w7s.json`: declares the Workers AI runtime values that the deploy action passes
-  into the backend.
+- `w7s.json`: declares the W7S AI service binding.
 - `.github/workflows/deploy.yml`: deploys this repo with `w7s-io/w7s-cloud@v1`.
 
 ## How It Works
@@ -21,31 +20,25 @@ The frontend calls:
 POST /api/joke
 ```
 
-The backend builds a short prompt, then calls Cloudflare's Workers AI REST API:
+The backend builds a short prompt, then calls the W7S AI service binding:
 
 ```text
-POST https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/run/@cf/meta/llama-3.1-8b-instruct
+POST https://w7s.internal/api/v1/ai/run
 ```
 
-The API token stays in the backend as a secret binding. The browser never sees
-the token or the Cloudflare account ID.
+W7S owns the provider credentials and injects `W7S_AI`, `W7S_AI_TOKEN`,
+`W7S_AI_CALLER`, and `W7S_AI_ENVIRONMENT` when the repo declares:
 
-## Required GitHub Secrets
-
-Set these repository secrets before deploying:
-
-```text
-CLOUDFLARE_ACCOUNT_ID
-CLOUDFLARE_API_TOKEN
+```json
+{
+  "bindings": {
+    "ai": ["W7S_AI"]
+  }
+}
 ```
 
-The token needs Workers AI permissions for the target Cloudflare account.
-
-Optional repository variable:
-
-```text
-CLOUDFLARE_AI_MODEL=@cf/meta/llama-3.1-8b-instruct
-```
+No Cloudflare account, Cloudflare API token, W7S account, or GitHub secret is
+required for this example repo.
 
 ## Local Commands
 
@@ -55,10 +48,10 @@ npm run check
 npm run dev
 ```
 
-To smoke test the backend against Workers AI locally:
+To smoke test the backend locally with a mock W7S AI binding:
 
 ```sh
-CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=... npm run smoke:backend
+npm run smoke:backend
 ```
 
 ## Deploy
