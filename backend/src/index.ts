@@ -3,8 +3,6 @@ import { Hono } from "hono";
 type Bindings = {
   W7S_AI?: Fetcher;
   W7S_AI_TOKEN?: string;
-  W7S_AI_CALLER?: string;
-  W7S_AI_ENVIRONMENT?: string;
 };
 
 type JokeRequest = {
@@ -110,17 +108,14 @@ const parseJokeRequest = async (request: Request): Promise<JokeRequest> => {
 
 const generateJoke = async (env: Bindings, topic: string): Promise<JokeResult> => {
   const token = env.W7S_AI_TOKEN?.trim();
-  const caller = env.W7S_AI_CALLER?.trim();
-  const environment = env.W7S_AI_ENVIRONMENT?.trim();
 
-  if (!env.W7S_AI || !token || !caller || !environment) {
+  if (!env.W7S_AI || !token) {
     return {
       ok: false as const,
       status: 503,
       body: {
         error: "W7S AI is not configured for this deployment.",
         setup: [
-          "Declare bindings.ai in w7s.json.",
           "Redeploy with the W7S GitHub Action."
         ]
       }
@@ -135,9 +130,7 @@ const generateJoke = async (env: Bindings, topic: string): Promise<JokeResult> =
       method: "POST",
       headers: {
         authorization: `Bearer ${token}`,
-        "content-type": "application/json",
-        "x-w7s-ai-caller": caller,
-        "x-w7s-ai-environment": environment
+        "content-type": "application/json"
       },
       body: JSON.stringify({
         model: DEFAULT_MODEL,

@@ -28,9 +28,7 @@ const response = await app.fetch(
   }),
   {
     W7S_AI: mockW7sAi,
-    W7S_AI_TOKEN: "local-ai-token",
-    W7S_AI_CALLER: "w7s-io/example-ai-joke",
-    W7S_AI_ENVIRONMENT: "production"
+    W7S_AI_TOKEN: "local-ai-token"
   }
 );
 
