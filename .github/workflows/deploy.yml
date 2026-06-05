@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  id-token: write
   contents: read
 
 concurrency:
@@ -24,6 +25,5 @@ jobs:
       - name: Deploy
         uses: w7s-io/w7s-cloud@v1
         with:
-          token: ${{ github.token }}
           install-command: npm ci
           build-command: npm run build
